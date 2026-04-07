@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Decoding Claude Code</title>
+  <meta name="description" content="What actually happens when you ask an AI to fix your code? A visual, technically precise explainer of Claude Code's architecture.">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏏</text></svg>">
+</head>
+<body>
+
+<!-- ============================================================
+     NAVIGATION
+     ============================================================ -->
+<nav class="nav" role="navigation" aria-label="Main navigation">
+  <div class="nav-inner">
+    <span class="nav-brand">Decoding Claude Code</span>
+    <ul class="nav-links">
+      <li><a href="#split">The Split</a></li>
+      <li><a href="#loop">The Loop</a></li>
+      <li><a href="#data">Data</a></li>
+      <li><a href="#security">Security</a></li>
+      <li><a href="#ram">RAM</a></li>
+      <li><a href="#context">Context</a></li>
+      <li><a href="#glossary">Glossary</a></li>
+      <li><a href="#reading">Reading</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ============================================================
+     HERO
+     ============================================================ -->
+<header class="hero" id="hero">
+  <div class="hero-content">
+    <h1>Decoding <span class="accent">Claude Code</span></h1>
+    <p class="hero-subtitle">What actually happens when you ask an AI to fix your code? Where does the thinking happen? Does your code leave your machine? And why is it eating your RAM?</p>
+    <p class="hero-meta">A technically precise, cricket-flavoured guide to the architecture of Claude Code.</p>
+    <div class="scroll-indicator" aria-hidden="true">
+      <span>Scroll to begin</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    </div>
+  </div>
+</header>
+
+<!-- ============================================================
+     SECTION 1: THE SPLIT
+     ============================================================ -->
+<section class="section" id="split">
+  <div class="section-inner">
+    <span class="section-label reveal">01 — The Split</span>
+    <h2 class="reveal">Your Machine vs. Anthropic's Servers</h2>
+
+    <p class="lead reveal">Here is the single most important thing to understand about Claude Code: <strong>it is two completely separate systems pretending to be one.</strong></p>
+
+    <p class="reveal">When you install Claude Code and start chatting with it in your terminal, you might imagine that a tiny AI has moved into your laptop. That is not what has happened. What has actually happened is that a very capable middleman has set up shop on your machine, and it has the AI's phone number.</p>
+
+    <p class="reveal"><strong>Your machine</strong> runs a TypeScript application built on the <a href="#glossary-bun">Bun</a> runtime. It is roughly 512,000 lines of code.<a class="cite" href="https://github.com/anthropics/claude-code" target="_blank" rel="noopener" title="Claude Code GitHub repo">src</a> It handles everything physical: reading your files, running shell commands, searching your codebase with <a href="#glossary-ripgrep">ripgrep</a>, rendering the terminal interface (built with React and a library called Ink), and managing permissions so Claude doesn't accidentally <code>rm -rf</code> your life's work.</p>
+
+    <p class="reveal"><strong>Anthropic's servers</strong> run the actual AI model — Sonnet, Opus, or Haiku, depending on your configuration. All reasoning, planning, code understanding, and decision-making happens there.<a class="cite" href="https://code.claude.com/docs/en/how-claude-code-works" target="_blank" rel="noopener" title="How Claude Code Works — Official Docs">docs</a> The model never touches your files directly. It never executes a single command on your machine. It can only <em>ask</em> the local client to do things on its behalf.</p>
+
+    <p class="reveal">The communication between the two happens over HTTPS (TLS-encrypted) via Anthropic's Messages API.<a class="cite" href="https://code.claude.com/docs/en/security" target="_blank" rel="noopener" title="Security — Official Docs">docs</a> The model's response streams back as <a href="#glossary-sse">Server-Sent Events</a>, so you see text appearing in real-time rather than waiting for the full response.</p>
+
+    <div class="cricket-box reveal">
+      <p>Think of it like a Test match. The <em>batsman</em> (the local CLI) is the one at the crease — physically present, playing the shots, running between wickets. The <em>captain sitting in the dressing room</em> (the AI model on Anthropic's servers) is watching the match on a TV feed, sending field placement instructions via walkie-talkie. The captain is the brains of the operation. But the captain never sets foot on the pitch and never touches the ball. The batsman handles all the physical action; the captain handles all the strategy.</p>
+    </div>
+
+    <!-- Architecture Diagram -->
+    <div class="diagram-container reveal">
+      <svg viewBox="0 0 800 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Architecture diagram showing local machine components on the left and Anthropic's servers on the right, connected by HTTPS">
+
+        <!-- Local Machine Box -->
+        <rect x="20" y="20" width="340" height="340" rx="16" fill="#1a2332" stroke="#d4a373" stroke-width="1.5" opacity="0.9"/>
+        <text x="190" y="52" text-anchor="middle" class="diagram-text-heading" font-size="14">YOUR MACHINE</text>
+
+        <!-- Components -->
+        <rect x="45" y="75" width="140" height="45" rx="8" fill="rgba(212,163,115,0.12)" stroke="#d4a373" stroke-width="1"/>
+        <text x="115" y="102" text-anchor="middle" class="diagram-text" font-size="11">Terminal UI</text>
+        <text x="115" y="115" text-anchor="middle" class="diagram-text-mono" font-size="9">React + Ink</text>
+
+        <rect x="200" y="75" width="140" height="45" rx="8" fill="rgba(212,163,115,0.12)" stroke="#d4a373" stroke-width="1"/>
+        <text x="270" y="102" text-anchor="middle" class="diagram-text" font-size="11">Query Engine</text>
+        <text x="270" y="115" text-anchor="middle" class="diagram-text-mono" font-size="9">API orchestration</text>
+
+        <rect x="45" y="140" width="140" height="45" rx="8" fill="rgba(212,163,115,0.12)" stroke="#d4a373" stroke-width="1"/>
+        <text x="115" y="167" text-anchor="middle" class="diagram-text" font-size="11">Tool System</text>
+        <text x="115" y="180" text-anchor="middle" class="diagram-text-mono" font-size="9">~40 tools</text>
+
+        <rect x="200" y="140" width="140" height="45" rx="8" fill="rgba(212,163,115,0.12)" stroke="#d4a373" stroke-width="1"/>
+        <text x="270" y="167" text-anchor="middle" class="diagram-text" font-size="11">Permissions</text>
+        <text x="270" y="180" text-anchor="middle" class="diagram-text-mono" font-size="9">Risk-classified</text>
+
+        <rect x="45" y="205" width="295" height="45" rx="8" fill="rgba(212,163,115,0.12)" stroke="#d4a373" stroke-width="1"/>
+        <text x="192" y="232" text-anchor="middle" class="diagram-text" font-size="11">Local Execution</text>
+        <text x="192" y="245" text-anchor="middle" class="diagram-text-mono" font-size="9">File I/O, Bash, Git, Search, Sandbox</text>
+
+        <rect x="45" y="270" width="295" height="45" rx="8" fill="rgba(212,163,115,0.08)" stroke="rgba(212,163,115,0.4)" stroke-width="1" stroke-dasharray="4 3"/>
+        <text x="192" y="297" text-anchor="middle" class="diagram-text" font-size="11">Session Store</text>
+        <text x="192" y="310" text-anchor="middle" class="diagram-text-mono" font-size="9">Conversation history, checkpoints, memory</text>
+
+        <!-- Runtime label -->
+        <text x="190" y="348" text-anchor="middle" class="diagram-text-mono" font-size="10" fill="#5a6a80">Bun runtime  ·  TypeScript  ·  ~512K LOC</text>
+
+        <!-- Server Box -->
+        <rect x="440" y="20" width="340" height="340" rx="16" fill="#1a2332" stroke="#4ecdc4" stroke-width="1.5" opacity="0.9"/>
+        <text x="610" y="52" text-anchor="middle" class="diagram-text-heading" font-size="14">ANTHROPIC'S SERVERS</text>
+
+        <rect x="475" y="100" width="270" height="100" rx="12" fill="rgba(78,205,196,0.1)" stroke="#4ecdc4" stroke-width="1"/>
+        <text x="610" y="138" text-anchor="middle" class="diagram-text-heading" font-size="16">Claude Model</text>
+        <text x="610" y="158" text-anchor="middle" class="diagram-text-mono" font-size="10">Sonnet · Opus · Haiku</text>
+        <text x="610" y="180" text-anchor="middle" class="diagram-text" font-size="10" fill="#8a9bb5">All reasoning, planning, code understanding</text>
+
+        <!-- Server capabilities -->
+        <text x="495" y="240" class="diagram-text" font-size="11" fill="#8a9bb5">→ Generates tool_use decisions</text>
+        <text x="495" y="262" class="diagram-text" font-size="11" fill="#8a9bb5">→ Writes code and explanations</text>
+        <text x="495" y="284" class="diagram-text" font-size="11" fill="#8a9bb5">→ Plans multi-step approaches</text>
+        <text x="495" y="306" class="diagram-text" font-size="11" fill="#8a9bb5">→ Never executes anything locally</text>
+
+        <!-- Connection arrows -->
+        <line x1="365" y1="150" x2="435" y2="150" stroke="#d4a373" stroke-width="1.5" class="data-flow-arrow"/>
+        <polygon points="432,146 440,150 432,154" fill="#d4a373"/>
+        <text x="400" y="140" text-anchor="middle" class="diagram-text-mono" font-size="8" fill="#d4a373">prompt +</text>
+        <text x="400" y="149" text-anchor="middle" class="diagram-text-mono" font-size="8" fill="#d4a373">context</text>
+
+        <line x1="435" y1="190" x2="365" y2="190" stroke="#4ecdc4" stroke-width="1.5" class="data-flow-arrow data-flow-arrow--reverse"/>
+        <polygon points="368,186 360,190 368,194" fill="#4ecdc4"/>
+        <text x="400" y="210" text-anchor="middle" class="diagram-text-mono" font-size="8" fill="#4ecdc4">response +</text>
+        <text x="400" y="219" text-anchor="middle" class="diagram-text-mono" font-size="8" fill="#4ecdc4">tool calls</text>
+
+        <!-- HTTPS label -->
+        <rect x="378" y="225" width="44" height="18" rx="4" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+        <text x="400" y="237" text-anchor="middle" class="diagram-text-mono" font-size="8" fill="#5a6a80">HTTPS</text>
+      </svg>
+      <p class="diagram-caption">The split architecture: your machine handles execution, Anthropic's servers handle reasoning</p>
+    </div>
+
+    <div class="fact-grid reveal reveal-stagger">
+      <div class="fact-card">
+        <div class="fact-value">512K</div>
+        <div class="fact-label">lines of TypeScript in the local client</div>
+      </div>
+      <div class="fact-card">
+        <div class="fact-value">~40</div>
+        <div class="fact-label">local tools (Read, Edit, Bash, Grep, etc.)</div>
+      </div>
+      <div class="fact-card">
+        <div class="fact-value">0</div>
+        <div class="fact-label">lines of AI model code running on your machine</div>
+      </div>
+      <div class="fact-card">
+        <div class="fact-value">100%</div>
+        <div class="fact-label">of inference happens on Anthropic's servers</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 2: THE AGENTIC LOOP
+     ============================================================ -->
+<section class="section section--alt" id="loop">
+  <div class="section-inner">
+    <span class="section-label reveal">02 — The Agentic Loop</span>
+    <h2 class="reveal">How It Actually Works, Ball by Ball</h2>
+
+    <p class="lead reveal">Claude Code does not just answer questions. It <strong>acts</strong> — reading files, running commands, editing code — in a continuous loop until the job is done. This loop is the heart of the system.</p>
+
+    <p class="reveal">Here is what happens every time you type a message:</p>
+
+    <p class="reveal"><strong>Step 1:</strong> The local client assembles the full context — your message, the entire conversation history so far, the system prompt, your project's <code>CLAUDE.md</code> instructions, tool definitions, and any auto-memory. This entire bundle is sent to Anthropic's API as a single request.<a class="cite" href="https://code.claude.com/docs/en/how-claude-code-works" target="_blank" rel="noopener" title="How Claude Code Works — Official Docs">docs</a></p>
+
+    <p class="reveal"><strong>Step 2:</strong> The model processes everything and streams back a response. This response might be plain text ("Here's what I found...") or it might contain <strong>tool calls</strong> — structured requests like "read the file at <code>src/utils.ts</code>" or "run <code>npm test</code> in the terminal."</p>
+
+    <p class="reveal"><strong>Step 3:</strong> The local client intercepts each tool call, checks it against the permission system (tools are classified as low, medium, or high risk), and if approved, <strong>executes it locally on your machine</strong>.<a class="cite" href="https://code.claude.com/docs/en/security" target="_blank" rel="noopener" title="Security — Official Docs">docs</a> The model never runs anything — it only asks.</p>
+
+    <p class="reveal"><strong>Step 4:</strong> The tool result (file contents, command output, search results) is appended to the conversation history.</p>
+
+    <p class="reveal"><strong>Step 5:</strong> The updated conversation is sent right back to the API. The model sees what happened and decides the next move — maybe another tool call, maybe a final answer.</p>
+
+    <p class="reveal"><strong>Step 6:</strong> This loop repeats — potentially dozens of times in a single response — until the model produces a reply with no further tool calls. Only then does control return to you.</p>
+
+    <div class="cricket-box reveal">
+      <p>This is an over in a Test match. The bowler runs in and delivers (<em>prompt sent to API</em>). The batsman reads the delivery and plays a shot (<em>model decides a tool call</em>). The ball races to the boundary rope, a fielder chases it down and throws it back (<em>local client executes the tool and returns the result</em>). The bowler gets the ball back and runs in again (<em>next API call with updated context</em>). Six balls per over, but Claude's overs have no fixed limit — the loop continues until the model declares its innings complete.</p>
+    </div>
+
+    <!-- Agentic Loop Diagram -->
+    <div class="diagram-container reveal">
+      <svg viewBox="0 0 800 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram showing the six steps of the agentic loop as a circular process" id="loop-diagram">
+
+        <!-- Center label -->
+        <text x="400" y="170" text-anchor="middle" class="diagram-text-heading" font-size="13">THE AGENTIC LOOP</text>
+        <text x="400" y="188" text-anchor="middle" class="diagram-text-mono" font-size="9" fill="#5a6a80">Repeats until no more tool calls</text>
+
+        <!-- Step 1 - top left -->
+        <g class="loop-step" data-step="1">
+          <rect x="30" y="20" width="200" height="65" rx="10" fill="rgba(212,163,115,0.1)" stroke="#d4a373" stroke-width="1.5"/>
+          <circle cx="52" cy="52" r="14" fill="#d4a373"/>
+          <text x="52" y="57" text-anchor="middle" font-size="12" font-weight="700" fill="#0f1729" font-family="'JetBrains Mono', monospace">1</text>
+          <text x="145" y="45" text-anchor="middle" class="diagram-text" font-size="11">Assemble context</text>
+          <text x="145" y="62" text-anchor="middle" class="diagram-text-mono" font-size="9">Prompt + history + tools</text>
+        </g>
+
+        <!-- Arrow 1→2 -->
+        <line x1="235" y1="52" x2="290" y2="52" stroke="#d4a373" stroke-width="1" opacity="0.4"/>
+        <polygon points="287,48 295,52 287,56" fill="#d4a373" opacity="0.4"/>
+
+        <!-- Step 2 - top right -->
+        <g class="loop-step" data-step="2">
+          <rect x="300" y="20" width="200" height="65" rx="10" fill="rgba(78,205,196,0.1)" stroke="#4ecdc4" stroke-width="1.5"/>
+          <circle cx="322" cy="52" r="14" fill="#4ecdc4"/>
+          <text x="322" y="57" text-anchor="middle" font-size="12" font-weight="700" fill="#0f1729" font-family="'JetBrains Mono', monospace">2</text>
+          <text x="415" y="45" text-anchor="middle" class="diagram-text" font-size="11">Send to API</text>
+          <text x="415" y="62" text-anchor="middle" class="diagram-text-mono" font-size="9">HTTPS → Anthropic</text>
+        </g>
+
+        <!-- Arrow 2→3 -->
+        <line x1="505" y1="52" x2="560" y2="52" stroke="#4ecdc4" stroke-width="1" opacity="0.4"/>
+        <polygon points="557,48 565,52 557,56" fill="#4ecdc4" opacity="0.4"/>
+
+        <!-- Step 3 - far right -->
+        <g class="loop-step" data-step="3">
+          <rect x="570" y="20" width="200" height="65" rx="10" fill="rgba(78,205,196,0.1)" stroke="#4ecdc4" stroke-width="1.5"/>
+          <circle cx="592" cy="52" r="14" fill="#4ecdc4"/>
+          <text x="592" y="57" text-anchor="middle" font-size="12" font-weight="700" fill="#0f1729" font-family="'JetBrains Mono', monospace">3</text>
+          <text x="685" y="45" text-anchor="middle" class="diagram-text" font-size="11">Model responds</text>
+          <text x="685" y="62" text-anchor="middle" class="diagram-text-mono" font-size="9">Text + tool_use blocks</text>
+        </g>
+
+        <!-- Arrow 3→4 (down) -->
+        <line x1="670" y1="90" x2="670" y2="210" stroke="#4ecdc4" stroke-width="1" opacity="0.4"/>
+        <polygon points="666,207 670,215 674,207" fill="#4ecdc4" opacity="0.4"/>
+
+        <!-- Step 4 - bottom right -->
+        <g class="loop-step" data-step="4">
+          <rect x="570" y="220" width="200" height="65" rx="10" fill="rgba(212,163,115,0.1)" stroke="#d4a373" stroke-width="1.5"/>
+          <circle cx="592" cy="252" r="14" fill="#d4a373"/>
+          <text x="592" y="257" text-anchor="middle" font-size="12" font-weight="700" fill="#0f1729" font-family="'JetBrains Mono', monospace">4</text>
+          <text x="685" y="245" text-anchor="middle" class="diagram-text" font-size="11">Execute locally</text>
+          <text x="685" y="262" text-anchor="middle" class="diagram-text-mono" font-size="9">Read, Edit, Bash, Grep...</text>
+        </g>
+
+        <!-- Arrow 4→5 -->
+        <line x1="565" y1="252" x2="510" y2="252" stroke="#d4a373" stroke-width="1" opacity="0.4"/>
+        <polygon points="513,248 505,252 513,256" fill="#d4a373" opacity="0.4"/>
+
+        <!-- Step 5 - bottom center -->
+        <g class="loop-step" data-step="5">
+          <rect x="300" y="220" width="200" height="65" rx="10" fill="rgba(212,163,115,0.1)" stroke="#d4a373" stroke-width="1.5"/>
+          <circle cx="322" cy="252" r="14" fill="#d4a373"/>
+          <text x="322" y="257" text-anchor="middle" font-size="12" font-weight="700" fill="#0f1729" font-family="'JetBrains Mono', monospace">5</text>
+          <text x="415" y="245" text-anchor="middle" class="diagram-text" font-size="11">Append result</text>
+          <text x="415" y="262" text-anchor="middle" class="diagram-text-mono" font-size="9">Add to conversation</text>
+        </g>
+
+        <!-- Arrow 5→6 -->
+        <line x1="295" y1="252" x2="240" y2="252" stroke="#d4a373" stroke-width="1" opacity="0.4"/>
+        <polygon points="243,248 235,252 243,256" fill="#d4a373" opacity="0.4"/>
+
+        <!-- Step 6 - bottom left -->
+        <g class="loop-step" data-step="6">
+          <rect x="30" y="220" width="200" height="65" rx="10" fill="rgba(212,163,115,0.1)" stroke="#d4a373" stroke-width="1.5"/>
+          <circle cx="52" cy="252" r="14" fill="#d4a373"/>
+          <text x="52" y="257" text-anchor="middle" font-size="12" font-weight="700" fill="#0f1729" font-family="'JetBrains Mono', monospace">6</text>
+          <text x="145" y="245" text-anchor="middle" class="diagram-text" font-size="11">Loop or finish</text>
+          <text x="145" y="262" text-anchor="middle" class="diagram-text-mono" font-size="9">More tool calls? → Step 1</text>
+        </g>
+
+        <!-- Return arrow 6→1 (up the left side) -->
+        <path d="M 30 220 Q 10 170 30 85" fill="none" stroke="rgba(212,163,115,0.3)" stroke-width="1.5" stroke-dasharray="4 4"/>
+        <polygon points="26,90 30,80 34,90" fill="rgba(212,163,115,0.4)"/>
+        <text x="12" y="155" text-anchor="middle" class="diagram-text-mono" font-size="7" fill="#5a6a80" transform="rotate(-90, 12, 155)">REPEAT</text>
+
+        <!-- Color key -->
+        <circle cx="200" y="325" r="5" fill="#d4a373"/>
+        <text x="210" y="329" class="diagram-text-mono" font-size="9" fill="#8a9bb5">= runs on your machine</text>
+        <circle cx="450" y="325" r="5" fill="#4ecdc4"/>
+        <text x="460" y="329" class="diagram-text-mono" font-size="9" fill="#8a9bb5">= runs on Anthropic's servers</text>
+      </svg>
+      <p class="diagram-caption">Each "turn" may involve multiple tool calls — Claude can read, edit, and test in a single response</p>
+    </div>
+
+    <p class="reveal">A key detail: the model can issue <strong>multiple tool calls in a single response</strong>. If it needs to read three files, it asks for all three at once, and the local client executes them in parallel. This is how Claude can read a file, edit it, run the tests, and respond with the results — all in what feels like a single "turn."</p>
+
+    <p class="reveal">Claude Code can also spawn <strong>sub-agents</strong> — separate instances with their own isolated context windows. This is how it parallelizes complex tasks: one sub-agent explores the codebase while another researches a library, and neither clutters the main conversation's memory.</p>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 3: THE DATA QUESTION
+     ============================================================ -->
+<section class="section" id="data">
+  <div class="section-inner">
+    <span class="section-label reveal">03 — The Data Question</span>
+    <h2 class="reveal">What Leaves Your Machine?</h2>
+
+    <p class="lead reveal">This is the question everyone eventually asks, and the answer requires honesty: <strong>yes, your code is sent to Anthropic's servers.</strong> There is no way around this.</p>
+
+    <p class="reveal">The AI model runs on Anthropic's servers. For it to read your code, understand your project structure, or suggest edits, it must <em>see</em> the code. And "seeing" means the code is transmitted over the network as part of the API request. There is no local model, no on-device inference, no clever trick where the model reasons about your code without actually receiving it.</p>
+
+    <p class="reveal">However, it is not a wholesale upload. Claude Code does not vacuum up your entire codebase and ship it off. It sends only what is needed for the current conversation:</p>
+
+    <div class="cricket-box reveal">
+      <p>Think of the TV broadcast of a cricket match. The cameras (<em>API requests</em>) show the dressing room captain (<em>the model</em>) what is happening on the pitch. The captain cannot set field placements for a delivery he cannot see. But the cameras are selective — they show the action at the crease, not every vendor in the parking lot. Similarly, Claude sees only the files it explicitly reads, not your entire hard drive.</p>
+    </div>
+
+    <div class="data-flow-list data-sent reveal">
+      <h4><span class="icon-up">&#9650;</span> Sent to Anthropic's servers</h4>
+      <ul>
+        <li>Your prompts and Claude's responses (the full conversation history)</li>
+        <li>Contents of files that Claude explicitly reads (not all files — only the ones Claude's tools open)</li>
+        <li>Output of shell commands Claude runs (test results, build output, etc.)</li>
+        <li>Your project's <code>CLAUDE.md</code> instructions and auto-memory</li>
+        <li>Tool definitions (so the model knows what tools are available)</li>
+        <li>Telemetry data — usage patterns and latency metrics (no code or file paths)<a class="cite" href="https://code.claude.com/docs/en/data-usage" target="_blank" rel="noopener" title="Data Usage — Official Docs">docs</a></li>
+      </ul>
+    </div>
+
+    <div class="data-flow-list data-local reveal">
+      <h4><span class="icon-local">&#9660;</span> Stays on your machine</h4>
+      <ul>
+        <li>Your filesystem (files are not uploaded to storage — they're included in API context only when read)</li>
+        <li>All tool execution (bash commands, file edits, git operations run locally)</li>
+        <li>Session files and conversation history (saved locally for resume/fork)</li>
+        <li>Checkpoint snapshots (file state before edits, stored locally for rollback)</li>
+        <li>Permission configurations and settings</li>
+        <li>Files Claude has not read — if Claude never opens a file, its contents never leave your machine</li>
+        <li>Databases, running applications, environment variables (unless you share them in conversation)</li>
+      </ul>
+    </div>
+
+    <!-- Data Flow Diagram -->
+    <div class="diagram-container reveal">
+      <svg viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Data flow diagram showing what data is sent to servers versus what stays local">
+
+        <!-- Your machine -->
+        <rect x="20" y="20" width="330" height="260" rx="14" fill="#1a2332" stroke="#d4a373" stroke-width="1.5"/>
+        <text x="185" y="48" text-anchor="middle" class="diagram-text-heading" font-size="13">YOUR MACHINE</text>
+
+        <!-- Items that stay -->
+        <rect x="40" y="65" width="145" height="32" rx="6" fill="rgba(129,178,154,0.12)" stroke="#81b29a" stroke-width="1"/>
+        <text x="112" y="86" text-anchor="middle" class="diagram-text" font-size="10">All project files</text>
+
+        <rect x="195" y="65" width="140" height="32" rx="6" fill="rgba(129,178,154,0.12)" stroke="#81b29a" stroke-width="1"/>
+        <text x="265" y="86" text-anchor="middle" class="diagram-text" font-size="10">Bash execution</text>
+
+        <rect x="40" y="107" width="145" height="32" rx="6" fill="rgba(129,178,154,0.12)" stroke="#81b29a" stroke-width="1"/>
+        <text x="112" y="128" text-anchor="middle" class="diagram-text" font-size="10">Session storage</text>
+
+        <rect x="195" y="107" width="140" height="32" rx="6" fill="rgba(129,178,154,0.12)" stroke="#81b29a" stroke-width="1"/>
+        <text x="265" y="128" text-anchor="middle" class="diagram-text" font-size="10">Checkpoints</text>
+
+        <rect x="40" y="149" width="145" height="32" rx="6" fill="rgba(129,178,154,0.12)" stroke="#81b29a" stroke-width="1"/>
+        <text x="112" y="170" text-anchor="middle" class="diagram-text" font-size="10">Git operations</text>
+
+        <rect x="195" y="149" width="140" height="32" rx="6" fill="rgba(129,178,154,0.12)" stroke="#81b29a" stroke-width="1"/>
+        <text x="265" y="170" text-anchor="middle" class="diagram-text" font-size="10">Permissions</text>
+
+        <!-- Items that travel -->
+        <rect x="40" y="200" width="145" height="32" rx="6" fill="rgba(224,122,95,0.12)" stroke="#e07a5f" stroke-width="1"/>
+        <text x="112" y="221" text-anchor="middle" class="diagram-text" font-size="10">Read file contents</text>
+
+        <rect x="195" y="200" width="140" height="32" rx="6" fill="rgba(224,122,95,0.12)" stroke="#e07a5f" stroke-width="1"/>
+        <text x="265" y="221" text-anchor="middle" class="diagram-text" font-size="10">Command output</text>
+
+        <rect x="40" y="242" width="295" height="28" rx="6" fill="rgba(224,122,95,0.12)" stroke="#e07a5f" stroke-width="1"/>
+        <text x="187" y="261" text-anchor="middle" class="diagram-text" font-size="10">Conversation history + prompts</text>
+
+        <!-- Arrows from red items -->
+        <line x1="350" y1="216" x2="445" y2="150" stroke="#e07a5f" stroke-width="1.5" class="data-flow-arrow"/>
+        <line x1="350" y1="256" x2="445" y2="170" stroke="#e07a5f" stroke-width="1.5" class="data-flow-arrow"/>
+
+        <!-- Anthropic servers -->
+        <rect x="450" y="60" width="330" height="180" rx="14" fill="#1a2332" stroke="#4ecdc4" stroke-width="1.5"/>
+        <text x="615" y="90" text-anchor="middle" class="diagram-text-heading" font-size="13">ANTHROPIC'S SERVERS</text>
+
+        <rect x="480" y="110" width="270" height="55" rx="10" fill="rgba(78,205,196,0.08)" stroke="#4ecdc4" stroke-width="1"/>
+        <text x="615" y="138" text-anchor="middle" class="diagram-text" font-size="12">Claude Model</text>
+        <text x="615" y="155" text-anchor="middle" class="diagram-text-mono" font-size="9">Processes context → generates response</text>
+
+        <text x="615" y="200" text-anchor="middle" class="diagram-text-mono" font-size="9" fill="#5a6a80">Encrypted in transit (TLS)</text>
+        <text x="615" y="215" text-anchor="middle" class="diagram-text-mono" font-size="9" fill="#5a6a80">30-day default retention</text>
+        <text x="615" y="230" text-anchor="middle" class="diagram-text-mono" font-size="9" fill="#5a6a80">ZDR available for Enterprise/API</text>
+
+        <!-- Legend -->
+        <circle cx="200" cy="293" r="5" fill="#81b29a"/>
+        <text x="210" y="297" class="diagram-text-mono" font-size="9" fill="#8a9bb5">= never leaves your machine</text>
+        <circle cx="480" cy="293" r="5" fill="#e07a5f"/>
+        <text x="490" y="297" class="diagram-text-mono" font-size="9" fill="#8a9bb5">= sent to Anthropic's servers (encrypted)</text>
+      </svg>
+      <p class="diagram-caption">Only what Claude reads and the conversation itself are transmitted — everything else stays local</p>
+    </div>
+
+    <p class="reveal">A nuance worth understanding: when Claude reads a file, the file contents become part of the <strong>conversation context</strong> sent in the API request. They are not uploaded to a separate file store. They exist in the request payload, encrypted in transit via TLS, and are subject to Anthropic's data retention policies (which we'll cover next).<a class="cite" href="https://code.claude.com/docs/en/data-usage" target="_blank" rel="noopener" title="Data Usage — Official Docs">docs</a> Once the conversation ends and the retention period passes, those file contents are not persistently stored on Anthropic's side.</p>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 4: SECURITY & PRIVACY
+     ============================================================ -->
+<section class="section section--alt" id="security">
+  <div class="section-inner">
+    <span class="section-label reveal">04 — Security &amp; Privacy</span>
+    <h2 class="reveal">Stadium Security: Who Gets in Where</h2>
+
+    <p class="lead reveal">If your code is leaving your machine, the obvious follow-up is: <strong>how is it protected?</strong> The answer depends on which tier of service you're using.</p>
+
+    <div class="cricket-box reveal">
+      <p>Think of it as stadium access. <em>General Admission</em> (Free/Pro/Max) gets you into the ground with standard security checks. The <em>VIP Enclosure</em> (Team/Enterprise) adds dedicated security, stricter access controls, and your own private viewing area. The <em>Players' Enclosure</em> (API with Zero Data Retention) is the most restricted — once the match is over, even the CCTV footage is erased.</p>
+    </div>
+
+    <div class="tier-grid reveal reveal-stagger">
+      <div class="tier-card tier-card--general">
+        <h4>General Admission</h4>
+        <p style="font-size: 0.8125rem; color: var(--text-dim); margin-bottom: var(--space-md);">Free / Pro / Max</p>
+        <ul>
+          <li>TLS encryption in transit</li>
+          <li>30-day data retention</li>
+          <li>User choice on training opt-in</li>
+          <li>If training opted in: 5-year retention</li>
+          <li>Standard telemetry enabled</li>
+          <li>No Zero Data Retention option</li>
+        </ul>
+      </div>
+
+      <div class="tier-card tier-card--vip">
+        <h4>VIP Enclosure</h4>
+        <p style="font-size: 0.8125rem; color: var(--text-dim); margin-bottom: var(--space-md);">Team / Enterprise</p>
+        <ul>
+          <li>TLS encryption in transit + at rest</li>
+          <li>30-day default retention</li>
+          <li>No training on data (default)</li>
+          <li>SSO for Enterprise</li>
+          <li>HIPAA-ready with BAA</li>
+          <li>ZDR available (Enterprise)</li>
+        </ul>
+      </div>
+
+      <div class="tier-card tier-card--players">
+        <h4>Players' Enclosure</h4>
+        <p style="font-size: 0.8125rem; color: var(--text-dim); margin-bottom: var(--space-md);">API / Bedrock / Vertex</p>
+        <ul>
+          <li>Zero Data Retention available</li>
+          <li>No training on data (default)</li>
+          <li>VPC-contained (Bedrock/Vertex)</li>
+          <li>Telemetry off by default</li>
+          <li>SOC 2 Type II, ISO 27001</li>
+          <li>BYOK coming H1 2026</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 class="reveal">Certifications and Compliance</h3>
+    <p class="reveal">Anthropic holds <strong>SOC 2 Type II</strong> attestation, <strong>ISO 27001:2022</strong> and <strong>ISO/IEC 42001:2023</strong> (AI Management Systems) certifications.<a class="cite" href="https://privacy.claude.com/en/articles/10015870-what-certifications-has-anthropic-obtained" target="_blank" rel="noopener" title="Certifications — Anthropic Privacy Center">docs</a> HIPAA compliance is available via Business Associate Agreement. Compliance documentation is available through the <a href="https://trust.anthropic.com" target="_blank" rel="noopener">Anthropic Trust Center</a>.</p>
+
+    <h3 class="reveal">What About Training?</h3>
+    <p class="reveal">This is the question people most care about, and the answer is more nuanced than a flat yes or no:</p>
+    <ul class="reveal" style="padding-left: 1.5rem; margin-bottom: var(--space-lg);">
+      <li style="margin-bottom: var(--space-sm);">Consumer plans (Free, Pro, Max) give users the <strong>choice</strong> to allow data to be used for training. It is an opt-in setting. If you turn it on, data may be retained up to 5 years in de-identified form.<a class="cite" href="https://privacy.claude.com/en/articles/10023548-how-long-do-you-store-my-data" target="_blank" rel="noopener" title="Consumer Data Retention — Anthropic Privacy">docs</a></li>
+      <li style="margin-bottom: var(--space-sm);">Commercial plans (Team, Enterprise, API) <strong>do not train on your data by default</strong>. You would need to explicitly opt in (e.g., via the Developer Partner Program).<a class="cite" href="https://code.claude.com/docs/en/data-usage" target="_blank" rel="noopener" title="Data Usage — Official Docs">docs</a></li>
+    </ul>
+
+    <h3 class="reveal">Locking It Down Further</h3>
+    <p class="reveal">For maximum privacy, Claude Code supports environment variables that disable non-essential outbound traffic:</p>
+    <p class="reveal" style="font-family: var(--font-mono); font-size: 0.875rem; color: var(--accent-amber-light); background: var(--bg-code); padding: var(--space-md) var(--space-lg); border-radius: var(--radius-md); border: 1px solid var(--border-card);">
+      DISABLE_TELEMETRY=1<br>
+      DISABLE_ERROR_REPORTING=1<br>
+      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+    </p>
+    <p class="reveal" style="margin-top: var(--space-lg);">Cloud providers like AWS Bedrock and Google Vertex AI offer an additional layer: your API calls stay within your own cloud VPC, and telemetry/error reporting are <strong>disabled by default</strong> on these platforms.<a class="cite" href="https://code.claude.com/docs/en/third-party-integrations" target="_blank" rel="noopener" title="Third-Party Integrations — Official Docs">docs</a></p>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 5: RAM & RESOURCES
+     ============================================================ -->
+<section class="section" id="ram">
+  <div class="section-inner">
+    <span class="section-label reveal">05 — RAM &amp; Resources</span>
+    <h2 class="reveal">What Your Machine Actually Does (And Eats)</h2>
+
+    <p class="lead reveal">If all the thinking happens on Anthropic's servers, why is Claude Code using 800+ megabytes of your RAM? Fair question.</p>
+
+    <p class="reveal">The local client is not a trivial program. It is a full TypeScript application running on the <a href="#glossary-bun">Bun</a> runtime, rendering a React-based terminal interface, maintaining conversation state, buffering tool results, managing file checksums for rollback, and orchestrating the permission system. All of this takes memory.</p>
+
+    <p class="reveal"><strong>Measured baseline:</strong> approximately <strong>820 MB</strong> of resident memory (RSS) per idle session. Official documentation puts the expected range at 100–2,000 MB depending on what Claude is doing. Reading large files, buffering long command outputs, or spawning sub-agents will push the number higher.</p>
+
+    <div class="cricket-box reveal">
+      <p>The ground staff at a cricket stadium. They maintain the pitch, manage the scoreboard, operate the floodlights, run the PA system, and keep the crowd fed. Without them, no match happens. But they are not the ones scoring centuries. More ground staff (<em>more RAM</em>) means a better-maintained stadium (<em>smoother experience</em>), but they cannot bat or bowl on your behalf. The <em>quality</em> of Claude's thinking is determined by the model on Anthropic's servers — your RAM just determines whether the local experience stutters or flows.</p>
+    </div>
+
+    <h3 class="reveal">CLI vs. Desktop App vs. VS Code Extension</h3>
+    <p class="reveal">Claude Code runs in three different environments, all using the same core engine:</p>
+
+    <div class="diagram-container reveal">
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Aspect</th>
+            <th>CLI (Terminal)</th>
+            <th>Desktop App</th>
+            <th>VS Code Extension</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Runtime</strong></td>
+            <td>Bun process</td>
+            <td>Electron + Bun engine</td>
+            <td>VS Code + embedded CLI</td>
+          </tr>
+          <tr>
+            <td><strong>Memory overhead</strong></td>
+            <td><span class="badge badge--green">Lowest</span></td>
+            <td><span class="badge badge--amber">Medium</span> (Electron)</td>
+            <td><span class="badge badge--amber">Medium</span> (VS Code)</td>
+          </tr>
+          <tr>
+            <td><strong>Process model</strong></td>
+            <td>1 main + sub-agents</td>
+            <td>Electron + Bun + sub-agents</td>
+            <td>VS Code + CLI binary + sub-agents</td>
+          </tr>
+          <tr>
+            <td><strong>Core engine</strong></td>
+            <td colspan="3" style="text-align: center; color: var(--text-muted);">Identical agentic loop, same tools, same API calls</td>
+          </tr>
+          <tr>
+            <td><strong>Extras</strong></td>
+            <td>Full feature set</td>
+            <td>Visual diff, preview, scheduling</td>
+            <td>Inline diff, sidebar, Jupyter</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="reveal">The VS Code extension is architecturally interesting: it embeds the CLI binary and runs a local MCP server that the CLI connects to.<a class="cite" href="https://code.claude.com/docs/en/vs-code" target="_blank" rel="noopener" title="VS Code Extension — Official Docs">docs</a> It is not a reimplementation — it is a bridge. The Desktop app is an Electron shell around the same Bun-based core.<a class="cite" href="https://code.claude.com/docs/en/desktop" target="_blank" rel="noopener" title="Desktop App — Official Docs">docs</a> In all three cases, the agentic loop, tool system, and API communication are identical.</p>
+
+    <h3 class="reveal">Multiple Sessions</h3>
+    <p class="reveal">Each Claude Code session runs as a <strong>fully independent process</strong>. Separate process, separate context window, separate memory. There is no shared state between sessions except your CLAUDE.md, auto-memory files on disk, and — importantly — your <strong>API rate limits</strong>, which are pooled across all sessions under the same subscription.</p>
+
+    <p class="reveal">With stable versions at ~820 MB each, running 4 simultaneous sessions costs roughly 3.2 GB of RAM — manageable on a 16 GB machine. The practical bottleneck for multiple sessions is usually rate limits, not RAM.</p>
+
+    <h3 class="reveal">Does More RAM Help?</h3>
+
+    <p class="reveal"><strong>Mostly no.</strong> The quality of Claude's output — its reasoning, code understanding, and suggestions — is determined entirely by the model running on Anthropic's servers. Your local RAM has zero influence on that. The model doesn't run faster because your laptop has 64 GB instead of 16 GB.</p>
+
+    <p class="reveal">Where RAM <em>does</em> matter:</p>
+    <ul class="reveal" style="padding-left: 1.5rem; margin-bottom: var(--space-lg);">
+      <li style="margin-bottom: var(--space-sm);"><strong>Preventing swap thrashing</strong> — if your OS starts paging Claude Code's process to disk, you'll feel latency on tool execution and UI rendering</li>
+      <li style="margin-bottom: var(--space-sm);"><strong>Running alongside your IDE</strong> — VS Code, JetBrains, Docker, browser tabs, and Claude Code all competing for RAM</li>
+      <li style="margin-bottom: var(--space-sm);"><strong>Multiple concurrent sessions</strong> — each session is additive (~820 MB each)</li>
+      <li style="margin-bottom: var(--space-sm);"><strong>Large shell command outputs</strong> — buffered in memory before being sent to the API</li>
+    </ul>
+
+    <p class="reveal"><strong>Recommendation:</strong> 16 GB is comfortable for single-session use. 32 GB is prudent if you run multiple sessions or use the Desktop/VS Code versions alongside heavy dev tools.</p>
+
+    <div class="fact-grid reveal reveal-stagger">
+      <div class="fact-card">
+        <div class="fact-value">~820 MB</div>
+        <div class="fact-label">per session baseline (stable versions)</div>
+      </div>
+      <div class="fact-card">
+        <div class="fact-value">16 GB</div>
+        <div class="fact-label">recommended for single-session use</div>
+      </div>
+      <div class="fact-card">
+        <div class="fact-value">32 GB</div>
+        <div class="fact-label">prudent for multi-session or IDE + Claude</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 6: THE CONTEXT WINDOW
+     ============================================================ -->
+<section class="section section--alt" id="context">
+  <div class="section-inner">
+    <span class="section-label reveal">06 — The Context Window</span>
+    <h2 class="reveal">The Scorecard: What the Captain Sees</h2>
+
+    <p class="lead reveal">The context window is the single most important concept for understanding Claude Code's behaviour and limitations. <strong>It is the totality of what the model can see on each turn.</strong></p>
+
+    <p class="reveal">Every time the local client sends a request to Anthropic's API, it sends the <em>entire accumulated context</em>: the system prompt, your CLAUDE.md, auto-memory, all tool definitions, every message in the conversation so far, and every tool result. The model does not "remember" anything between turns — it re-reads the full context on every single API call.</p>
+
+    <div class="cricket-box reveal">
+      <p>The <em>scorecard</em>. It records every ball bowled, every run scored, every wicket taken throughout the innings. The captain in the dressing room studies the full scorecard before each delivery to understand the state of play. But scorecards have a fixed number of pages. When the innings runs long, the scorers start summarising early sessions into compressed notes — "opening partnership of 87 in 22 overs" instead of ball-by-ball detail. That is exactly what <em>context compaction</em> does.</p>
+    </div>
+
+    <h3 class="reveal">What Fills the Context Window</h3>
+
+    <div class="context-bar reveal">
+      <div class="segment segment--system" title="System prompt">System</div>
+      <div class="segment segment--claude-md" title="CLAUDE.md">CLAUDE.md</div>
+      <div class="segment segment--memory" title="Auto-memory">Memory</div>
+      <div class="segment segment--tools" title="Tool definitions">Tools</div>
+      <div class="segment segment--conversation" title="Conversation history">Conversation history</div>
+      <div class="segment segment--results" title="Tool results">Tool results (file contents, command output)</div>
+    </div>
+
+    <div class="context-legend reveal">
+      <span class="context-legend-item"><span class="swatch" style="background: var(--accent-teal);"></span>System prompt</span>
+      <span class="context-legend-item"><span class="swatch" style="background: var(--accent-amber);"></span>CLAUDE.md</span>
+      <span class="context-legend-item"><span class="swatch" style="background: var(--accent-green);"></span>Auto-memory</span>
+      <span class="context-legend-item"><span class="swatch" style="background: #7c6fba;"></span>Tool definitions</span>
+      <span class="context-legend-item"><span class="swatch" style="background: var(--accent-red);"></span>Conversation</span>
+      <span class="context-legend-item"><span class="swatch" style="background: #e0a95f;"></span>Tool results</span>
+    </div>
+
+    <p class="reveal" style="margin-top: var(--space-xl);">The biggest consumers of context space are <strong>tool results</strong> (every file Claude reads and every command output) and the <strong>conversation history</strong> (every message back and forth). The system prompt, CLAUDE.md, and tool definitions are relatively fixed overhead.</p>
+
+    <h3 class="reveal">Context Compaction</h3>
+    <p class="reveal">Claude Code currently supports a context window of up to <strong>200,000 tokens per turn</strong>. When the accumulated context approaches this limit, the system automatically triggers <strong>compaction</strong>:</p>
+
+    <ul class="reveal" style="padding-left: 1.5rem; margin-bottom: var(--space-lg);">
+      <li style="margin-bottom: var(--space-sm);"><strong>First pass:</strong> Old tool outputs are cleared (they are the most expendable — the model has already seen and reasoned about them)</li>
+      <li style="margin-bottom: var(--space-sm);"><strong>Second pass:</strong> The conversation is summarised into a compressed form, preserving key decisions and recent context while discarding detailed early exchanges</li>
+      <li style="margin-bottom: var(--space-sm);"><strong>Result:</strong> The context is brought back within budget, and the conversation continues seamlessly</li>
+    </ul>
+
+    <p class="reveal">This is why very long Claude Code sessions can sometimes "forget" instructions you gave early on — those instructions may have been compacted away. It is also why the <code>CLAUDE.md</code> file is valuable: it is re-injected on every turn and survives compaction.<a class="cite" href="https://code.claude.com/docs/en/how-claude-code-works" target="_blank" rel="noopener" title="How Claude Code Works — Official Docs">docs</a></p>
+
+    <h3 class="reveal">No Local Indexing</h3>
+    <p class="reveal">A surprising architectural choice: <strong>Claude Code does not build an index of your codebase.</strong> No vector database, no embeddings, no background indexing process. Early versions experimented with RAG (Retrieval-Augmented Generation) using a local vector store, but the team found that agentic search — where the model uses Glob and Grep tools to actively explore the codebase — outperformed it significantly. This was confirmed by Boris Cherny, Claude Code's creator.<a class="cite" href="https://vadim.blog/claude-code-no-indexing" target="_blank" rel="noopener" title="Claude Code doesn't index your codebase — Vadim's blog">src</a></p>
+
+    <p class="reveal">The practical implication: every search starts from scratch against the live filesystem. For the vast majority of codebases (under 100K files), this works well and has the advantage of never serving stale results from an outdated index. For truly massive monorepos, it can be slower.</p>
+
+    <h3 class="reveal">Prompt Caching</h3>
+    <p class="reveal">Here is an efficiency trick that matters: Anthropic reports a <strong>92% prompt prefix reuse rate</strong> for Claude Code sessions, resulting in approximately <strong>81% cost reduction</strong>.<a class="cite" href="https://vadim.blog/claude-code-no-indexing" target="_blank" rel="noopener" title="Claude Code cost analysis — Vadim's blog">src</a> Because the beginning of each API call (system prompt, CLAUDE.md, tool definitions, early conversation) is identical to the previous call, the API can cache and reuse the processing of that prefix. You pay full price only for the new content at the end of each turn.</p>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 7: GLOSSARY
+     ============================================================ -->
+<section class="section" id="glossary">
+  <div class="section-inner">
+    <span class="section-label reveal">07 — Glossary</span>
+    <h2 class="reveal">The Technical Terms, Decoded</h2>
+
+    <p class="reveal" style="margin-bottom: var(--space-xl);">Every field has its jargon. Here is what the key terms actually mean, stripped of mystique.</p>
+
+    <div class="glossary-list reveal">
+
+      <div class="glossary-item" id="glossary-inference">
+        <div class="glossary-term"><h4>Inference</h4><span class="toggle-icon">+</span></div>
+        <div class="glossary-definition"><p>The process of running an input through a trained AI model to produce an output. When Claude reads your code and suggests a fix, the "thinking" step is inference. It requires specialised hardware (GPUs/TPUs) and runs on Anthropic's servers, not your machine. Think of it as the model "using" its training — learning happened months ago, inference is applying that knowledge now.</p></div>
+      </div>
+
+      <div class="glossary-item" id="glossary-context-window">
+        <div class="glossary-term"><h4>Context Window</h4><span class="toggle-icon">+</span></div>
+        <div class="glossary-definition"><p>The total amount of text (measured in tokens) that the model can consider in a single API call. Claude Code uses up to 200K tokens per turn. Everything the model needs to know — your question, the conversation history, file contents, tool definitions — must fit within this window. It is not persistent memory; the model re-reads the full context on every turn.</p></div>
+      </div>
+
+      <div class="glossary-item" id="glossary-tokens">
+        <div class="glossary-term"><h4>Tokens</h4><span class="toggle-icon">+</span></div>
+        <div class="glossary-definition"><p>The units AI models use to measure text. A token is roughly 3/4 of an English word, or about 4 characters. "Hello world" is 2 tokens. A 500-line source file might be 2,000–5,000 tokens depending on density. Context windows, pricing, and rate limits are all measured in tokens.</p></div>
+      </div>
+
+      <div class="glossary-item" id="glossary-agentic">
+        <div class="glossary-term"><h4>Agentic Loop</h4><span class="toggle-icon">+</span></div>
+        <div class="glossary-definition"><p>A pattern where the AI model does not just answer a question — it takes actions (reading files, running commands), observes the results, and decides what to do next, in a continuous loop. This is what makes Claude Code different from a chatbot: it can independently investigate a bug, try a fix, run tests, and iterate until the problem is solved.</p></div>
+      </div>
+
+      <div class="glossary-item" id="glossary-tool-use">
+        <div class="glossary-term"><h4>Tool Use</h4><span class="toggle-icon">+</span></div>
+        <div class="glossary-definition"><p>The mechanism by which the AI model requests actions to be performed. Instead of printing "you should run npm test," the model emits a structured tool_use block that says "run this command." The local client then executes it and returns the result. The model decides what to do; the local client does it. This separation is fundamental to Claude Code's architecture.</p></div>
+      </div>
+
+      <div class="glossary-item" id="glossary-bun">
+        <div class="glossary-term"><h4>Bun</h4><span class="toggle-icon">+</span></div>
+        <div class="glossary-definition"><p>A JavaScript/TypeScript runtime, similar to Node.js but designed for speed. Claude Code chose Bun over Node.js for faster startup times and built-in TypeScript support. When you see a Claude Code process in your Activity Monitor, it is a Bun process, not a Node.js one. Bun is open-source, created by Jarred Sumner, and written in Zig.</p></div>
+      </div>
+
+      <div class="glossary-item" id="glossary-sse">
+        <div class="glossary-term"><h4>Server-Sent Events (SSE)</h4><span class="toggle-icon">+</span></div>
+        <div class="glossary-definition"><p>A web standard for streaming data from a server to a client over HTTP. When Claude's response appears word-by-word in your terminal, that is SSE at work — the server sends chunks of the response as they are generated, rather than waiting for the full response to be complete. This is what makes Claude Code feel responsive even when generating long answers.</p></div>
+      </div>
+
+      <div class="glossary-item" id="glossary-compaction">
+        <div class="glossary-term"><h4>Compaction</h4><span class="toggle-icon">+</span></div>
+        <div class="glossary-definition"><p>The process of condensing the conversation context when it approaches the context window limit. Claude Code automatically summarises older parts of the conversation and discards detailed tool outputs that have already been processed. Think of it as the difference between a ball-by-ball commentary and a session summary — the key information is preserved, but the granular detail is compressed.</p></div>
+      </div>
+
+      <div class="glossary-item" id="glossary-zdr">
+        <div class="glossary-term"><h4>Zero Data Retention (ZDR)</h4><span class="toggle-icon">+</span></div>
+        <div class="glossary-definition"><p>A data handling mode where Anthropic does not store your API inputs or outputs at rest after the response is returned. Available for Enterprise and API (commercial) plans. Even under ZDR, content flagged for usage policy violations may be retained for up to 2 years. ZDR is not available on consumer plans (Free, Pro, Max).<a class="cite" href="https://platform.claude.com/docs/en/build-with-claude/api-and-data-retention" target="_blank" rel="noopener" title="Zero Data Retention — Claude API Docs">docs</a></p></div>
+      </div>
+
+      <div class="glossary-item" id="glossary-soc2">
+        <div class="glossary-term"><h4>SOC 2 Type II</h4><span class="toggle-icon">+</span></div>
+        <div class="glossary-definition"><p>An auditing standard that evaluates how a company manages customer data, specifically examining security, availability, processing integrity, confidentiality, and privacy controls. "Type II" means an independent auditor has verified that these controls were not only designed well but also operated effectively over a period of time (typically 6–12 months). It is the most widely recognised trust certification in cloud computing.</p></div>
+      </div>
+
+      <div class="glossary-item" id="glossary-mcp">
+        <div class="glossary-term"><h4>MCP (Model Context Protocol)</h4><span class="toggle-icon">+</span></div>
+        <div class="glossary-definition"><p>An open standard (created by Anthropic) that lets AI models connect to external tools and data sources through a standardised interface. In Claude Code, MCP servers can provide additional tools beyond the built-in ~40 — for example, connecting to databases, cloud services, or custom APIs. The VS Code extension uses MCP internally to bridge between VS Code and the CLI engine.</p></div>
+      </div>
+
+      <div class="glossary-item" id="glossary-ripgrep">
+        <div class="glossary-term"><h4>ripgrep (rg)</h4><span class="toggle-icon">+</span></div>
+        <div class="glossary-definition"><p>A blazing-fast text search tool written in Rust. When Claude Code searches your codebase (the Grep tool), it uses ripgrep under the hood, not the standard Unix grep. ripgrep is significantly faster, respects .gitignore files by default, and handles Unicode correctly. Claude Code bundles its own copy via the @vscode/ripgrep package.</p></div>
+      </div>
+
+      <div class="glossary-item" id="glossary-prompt-caching">
+        <div class="glossary-term"><h4>Prompt Caching</h4><span class="toggle-icon">+</span></div>
+        <div class="glossary-definition"><p>An optimisation where the API reuses the processing of repeated prompt prefixes. Since the beginning of each Claude Code API call (system prompt, CLAUDE.md, tool definitions, early conversation) is identical to the previous call, the API can skip re-processing that prefix. Anthropic reports 92% prefix reuse in Claude Code sessions, resulting in ~81% cost reduction.</p></div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 8: FURTHER READING
+     ============================================================ -->
+<section class="section section--alt" id="reading">
+  <div class="section-inner">
+    <span class="section-label reveal">08 — Further Reading</span>
+    <h2 class="reveal">Go Deeper</h2>
+
+    <p class="reveal">The sources behind this article, plus some genuinely useful reads if you want to understand the internals further.</p>
+
+    <div class="reading-grid reveal reveal-stagger">
+
+      <div class="reading-card">
+        <span class="reading-card-source reading-card-source--official">Official Docs</span>
+        <h4><a href="https://code.claude.com/docs/en/how-claude-code-works" target="_blank" rel="noopener">How Claude Code Works</a></h4>
+        <p>Anthropic's own explanation of the agentic loop, tool system, and context management. The single best primary source for understanding the architecture.</p>
+      </div>
+
+      <div class="reading-card">
+        <span class="reading-card-source reading-card-source--official">Official Docs</span>
+        <h4><a href="https://code.claude.com/docs/en/security" target="_blank" rel="noopener">Security Model</a></h4>
+        <p>Sandboxing, permission levels, file access restrictions, and how Claude Code protects your system from unintended actions. Covers both macOS seatbelt and Linux bubblewrap.</p>
+      </div>
+
+      <div class="reading-card">
+        <span class="reading-card-source reading-card-source--official">Official Docs</span>
+        <h4><a href="https://code.claude.com/docs/en/data-usage" target="_blank" rel="noopener">Data Usage &amp; Privacy</a></h4>
+        <p>What data is sent, how long it is retained, training policies by tier, and how to disable telemetry. Essential reading if you work with sensitive codebases.</p>
+      </div>
+
+      <div class="reading-card">
+        <span class="reading-card-source reading-card-source--engineering">Engineering Blog</span>
+        <h4><a href="https://www.anthropic.com/engineering/claude-code-sandboxing" target="_blank" rel="noopener">Claude Code Sandboxing</a></h4>
+        <p>Anthropic's engineering team on how they sandbox bash commands using OS-level primitives — macOS seatbelt profiles and Linux bubblewrap containers.</p>
+      </div>
+
+      <div class="reading-card">
+        <span class="reading-card-source reading-card-source--blog">Analysis</span>
+        <h4><a href="https://vadim.blog/claude-code-no-indexing" target="_blank" rel="noopener">Why Claude Code Doesn't Index Your Codebase</a></h4>
+        <p>Vadim's analysis of Claude Code's search strategy: why agentic search with ripgrep outperformed RAG with a local vector database, and the prompt caching economics that make it viable.</p>
+      </div>
+
+      <div class="reading-card">
+        <span class="reading-card-source reading-card-source--official">Official Docs</span>
+        <h4><a href="https://code.claude.com/docs/en/authentication" target="_blank" rel="noopener">Authentication &amp; Credentials</a></h4>
+        <p>OAuth, API keys, cloud provider credentials (Bedrock, Vertex, Foundry), and how credentials are stored on each platform — macOS Keychain, Linux file permissions, etc.</p>
+      </div>
+
+      <div class="reading-card">
+        <span class="reading-card-source reading-card-source--official">Trust Center</span>
+        <h4><a href="https://trust.anthropic.com" target="_blank" rel="noopener">Anthropic Trust Center</a></h4>
+        <p>SOC 2 Type II reports, ISO 27001 and 42001 certifications, HIPAA documentation, and compliance artifacts. The authoritative source for enterprise security evaluation.</p>
+      </div>
+
+      <div class="reading-card">
+        <span class="reading-card-source reading-card-source--community">Open Source</span>
+        <h4><a href="https://github.com/anthropics/claude-code" target="_blank" rel="noopener">Claude Code on GitHub</a></h4>
+        <p>The official repository. Issues, discussions, release notes, and the npm package. Good for tracking known bugs (like memory regressions) and upcoming features.</p>
+      </div>
+
+      <div class="reading-card">
+        <span class="reading-card-source reading-card-source--official">Official Docs</span>
+        <h4><a href="https://platform.claude.com/docs/en/build-with-claude/api-and-data-retention" target="_blank" rel="noopener">Zero Data Retention (ZDR)</a></h4>
+        <p>The full details on ZDR: which plans and features are eligible, what exceptions exist for policy violations, and how to enable it for your organisation.</p>
+      </div>
+
+      <div class="reading-card">
+        <span class="reading-card-source reading-card-source--official">Official Docs</span>
+        <h4><a href="https://code.claude.com/docs/en/overview" target="_blank" rel="noopener">Claude Code Overview</a></h4>
+        <p>The starting point for everything: installation, system requirements (4 GB RAM minimum, 16 GB recommended), supported platforms, and getting started guides.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     FOOTER
+     ============================================================ -->
+<footer class="footer">
+  <div class="footer-inner">
+    <p>Built with Claude Code, naturally.</p>
+    <p style="margin-top: var(--space-xl); font-size: 0.75rem;">Technical claims last verified April 2026. If something has changed, Anthropic's official documentation is the authoritative source.</p>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>
